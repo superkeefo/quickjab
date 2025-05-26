@@ -65,6 +65,7 @@ class Jobtimer:
         self.counting = True
         countup_btn.configure(state="disabled")
         countdown_btn.configure(state="disabled")
+        self.count_btn.configure(fg_color="#990000", image=self.pause_image, hover_color="#AA0000")
         if self.count_mode == "up":
             # Start from the given time in seconds
             self.starttime = hours * 3600 + minutes * 60
@@ -154,6 +155,7 @@ class Jobtimer:
             self.clock_hours_input.configure(state="normal")
         if self.clock_minutes_input:
             self.clock_minutes_input.configure(state="normal")
+        self.count_btn.configure(fg_color=["#2CC985", "#2FA572"], image=self.play_image, hover_color="#99cc99")
         if self.count_mode == "up":
             countdown_btn.configure(state="normal")
             try:
@@ -277,11 +279,17 @@ jobtimer.set_default_inputs()
 
 ### PLAY PAUSE BTN
 play_image = ctk.CTkImage(Image.open(os.path.join('icons','play_b.png')), size=(25,25))
+pause_image = ctk.CTkImage(Image.open(os.path.join('icons','pause.png')), size=(25,25))
+
 
 count_btn = ctk.CTkButton(master=root, width=125, height=40, text=None, hover_color='#99CC99', 
                           corner_radius=7, image=play_image,
                           command=jobtimer.playpause)
 count_btn.place(x=355,y=28)
+
+jobtimer.count_btn = count_btn
+jobtimer.play_image = play_image
+jobtimer.pause_image = pause_image
 
 countup_image = ctk.CTkImage(Image.open(os.path.join('icons','up.png')), size=(20,20))
 countdown_image = ctk.CTkImage(Image.open(os.path.join('icons','down.png')), size=(20,20))
