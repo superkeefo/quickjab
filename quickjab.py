@@ -11,6 +11,17 @@ class Jobtimer:
     def __init__(self):
         self.counting = False
         self.count_mode = "up" # default count mode
+        self.clock_hours_input = None
+        self.clock_minutes_input = None
+        self._timer_after_id = None  
+
+    def set_default_inputs(self):
+        if self.clock_hours_input:
+            self.clock_hours_input.delete(0, "end")
+            self.clock_hours_input.insert(0, "0")
+        if self.clock_minutes_input:
+            self.clock_minutes_input.delete(0, "end")
+            self.clock_minutes_input.insert(0, "00")
         
     def switchcount(self):
         if self.count_mode == "up":
@@ -27,8 +38,6 @@ class Jobtimer:
             countdown_btn.configure(state="normal")
             print(f'now counting up')
 
-
-
     def setcountbtns(self):
         if self.count_mode == "up":
             countup_btn.configure(fg_color='#444444')
@@ -37,44 +46,135 @@ class Jobtimer:
             countdown_btn.configure(fg_color='#444444')
             countup_btn.configure(fg_color='#333333')
 
-
-    def startcount(self):
-        self.counting = True   
-        if self.count_mode == "up":
-            self.countup()
+    def playpause(self):
+        if not self.counting:
+            # Read values from inputs
+            try:
+                hours = int(self.clock_hours_input.get())
+            except Exception:
+                hours = 0
+            try:
+                minutes = int(self.clock_minutes_input.get())
+            except Exception:
+                minutes = 0
+            self.startcount(hours, minutes)
         else:
-            self.countdown()   
+            self.stopcount()
 
-    def stopcount(self):
-        self.counting = False
+    def startcount(self, hours=0, minutes=0):
+        self.counting = True
+        countup_btn.configure(state="disabled")
+        countdown_btn.configure(state="disabled")
+        if self.count_mode == "up":
+            # Start from the given time in seconds
+            self.starttime = hours * 3600 + minutes * 60
+            self.countup(self.starttime)
+        else:
+            # Set remaining time in seconds
+            self.remaining = hours * 3600 + minutes * 60
+            self.countdown(self.remaining)
+        
 
     def countdown(self, remaining=None):
         if remaining is not None:
             self.remaining = remaining
 
+        if self.counting:
+            if self.clock_hours_input:
+                self.clock_hours_input.configure(state="disabled")
+            if self.clock_minutes_input:
+                self.clock_minutes_input.configure(state="disabled")
+
         if self.remaining <= 0:
             self.timesup()
+            
+            if self.clock_hours_input:
+                self.clock_hours_input.configure(state="normal")
+            if self.clock_minutes_input:
+                self.clock_minutes_input.configure(state="normal")
         else:
             hours = int(self.remaining / 3600)
             minutes = int(self.remaining / 60 ) % 60
+            if self.clock_hours_input:
+                self.clock_hours_input.configure(state="normal")
+                self.clock_hours_input.delete(0, "end")
+                self.clock_hours_input.insert(0, f"{hours}")
+                self.clock_hours_input.configure(state="disabled")
+            if self.clock_minutes_input:
+                self.clock_minutes_input.configure(state="normal")
+                self.clock_minutes_input.delete(0, "end")
+                self.clock_minutes_input.insert(0, f"{minutes:02}")
+                self.clock_minutes_input.configure(state="disabled")
             print(f"{hours:02}:{minutes:02}")
             self.remaining -= 1
             if self.counting:
-                root.after(1000, self.countdown)
+                # Store after id
+                self._timer_after_id = root.after(1000, self.countdown)
+            else:
+                self._timer_after_id = None
 
     def countup(self, startingat=None):
         if startingat is not None:
             self.starttime = startingat
         self.counting = True
-      
+
+        if self.clock_hours_input:
+            self.clock_hours_input.configure(state="disabled")
+        if self.clock_minutes_input:
+            self.clock_minutes_input.configure(state="disabled")
+
         hours = int(self.starttime / 3600)
         minutes = int(self.starttime / 60 ) % 60
+        if self.clock_hours_input:
+            self.clock_hours_input.configure(state="normal")
+            self.clock_hours_input.delete(0, "end")
+            self.clock_hours_input.insert(0, f"{hours}")
+            self.clock_hours_input.configure(state="disabled")
+        if self.clock_minutes_input:
+            self.clock_minutes_input.configure(state="normal")
+            self.clock_minutes_input.delete(0, "end")
+            self.clock_minutes_input.insert(0, f"{minutes:02}")
+            self.clock_minutes_input.configure(state="disabled")
         print(f"{hours:02}:{minutes:02}")
         self.starttime += 1
         if self.counting:
-            root.after(1000, self.countup)
+            # Store after id
+            self._timer_after_id = root.after(1000, self.countup)
+        else:
+            self._timer_after_id = None
+
+    def stopcount(self):
+        self.counting = False
+        # Cancel any scheduled after callback
+        if self._timer_after_id is not None:
+            root.after_cancel(self._timer_after_id)
+            self._timer_after_id = None
+        # Re-enable inputs when stopped
+        if self.clock_hours_input:
+            self.clock_hours_input.configure(state="normal")
+        if self.clock_minutes_input:
+            self.clock_minutes_input.configure(state="normal")
+        if self.count_mode == "up":
+            countdown_btn.configure(state="normal")
+            try:
+                hours = int(self.clock_hours_input.get())
+            except Exception:
+                hours = 0
+            try:
+                minutes = int(self.clock_minutes_input.get())
+            except Exception:
+                minutes = 0
+            time_input.delete(0, "end")
+            time_input.insert(0, f"{hours:01}hr {minutes:02}min")
+        else:
+            countup_btn.configure(state="normal")
 
     def timesup(self):
+        self.counting = False
+        countup_btn.configure(state="normal")
+        stopped_at = datetime.datetime.now().strftime("Stopped at %H:%M")
+        time_input.delete(0, "end")
+        time_input.insert(0, stopped_at)
         print("Time's up!")
 
     def convertinput(self, hours, minutes):
@@ -163,31 +263,46 @@ clock_hours.place(x=85, y=32)
 clock_minutes = ctk.CTkLabel(clock_bg, text="min", font=("Roboto", 40), text_color='#333333')
 clock_minutes.place(x=220, y=32)
 
-clock_hours_input = ctk.CTkEntry(clock_bg, width=70, height=100, font=("Roboto", 50), justify="right", fg_color='#000000', border_width=0)
+clock_hours_input = ctk.CTkEntry(clock_bg, width=70, height=100, font=("Roboto", 50), 
+                                 justify="right", fg_color='#000000', border_width=0)
 clock_hours_input.place(x=10,y=3)
-clock_minutes_input = ctk.CTkEntry(clock_bg, width=70, height=100, font=("Roboto", 50), justify="right", fg_color='#000000', border_width=0)
+
+clock_minutes_input = ctk.CTkEntry(clock_bg, width=70, height=100, font=("Roboto", 50), 
+                                   justify="right", fg_color='#000000', border_width=0)
 clock_minutes_input.place(x=145,y=3)
+
+jobtimer.clock_hours_input = clock_hours_input
+jobtimer.clock_minutes_input = clock_minutes_input
+jobtimer.set_default_inputs()
 
 ### PLAY PAUSE BTN
 play_image = ctk.CTkImage(Image.open(os.path.join('icons','play_b.png')), size=(25,25))
 
-count_btn = ctk.CTkButton(master=root, width=125, height=40, text=None, hover_color='#99CC99', corner_radius=7, image=play_image)
+count_btn = ctk.CTkButton(master=root, width=125, height=40, text=None, hover_color='#99CC99', 
+                          corner_radius=7, image=play_image,
+                          command=jobtimer.playpause)
 count_btn.place(x=355,y=28)
 
 countup_image = ctk.CTkImage(Image.open(os.path.join('icons','up.png')), size=(20,20))
 countdown_image = ctk.CTkImage(Image.open(os.path.join('icons','down.png')), size=(20,20))
 
 
-countup_btn = ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, state="disabled", fg_color='#333333', hover_color='#666666', image = countup_image, command=jobtimer.switchcount )
+countup_btn = ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, 
+                            state="disabled", fg_color='#333333', hover_color='#666666', image = countup_image, 
+                            command=jobtimer.switchcount )
 countup_btn.place(x=355,y=78)
-countdown_btn = ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, fg_color='#333333', hover_color='#666666', image = countdown_image,  command=jobtimer.switchcount )
+
+countdown_btn = ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, 
+                              fg_color='#333333', hover_color='#666666', image = countdown_image,  
+                              command=jobtimer.switchcount )
 countdown_btn.place(x=421,y=78)
 
 jobtimer.setcountbtns()
 
 dropdownlist = joblist.listjobs()
 dropdownlist.insert(0, "Select job")
-job_dropdown = ctk.CTkComboBox(root, values=dropdownlist, width = 325, height=35, corner_radius=7, border_width=0, font=("Roboto", 12))
+job_dropdown = ctk.CTkComboBox(root, values=dropdownlist, width = 325, height=35, 
+                               corner_radius=7, border_width=0, font=("Roboto", 12))
 job_dropdown.place (x=20, y=140)
 
 def refresh_job_dropdown():
@@ -204,15 +319,23 @@ deljob_image = ctk.CTkImage(Image.open(os.path.join('icons','delete.png')), size
 time_input = ctk.CTkEntry(root, width=325, height=35, corner_radius=7)
 time_input.place(x=20 , y=185)
 
-addjob_btn =ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, fg_color='#333333', image=addjob_image, command=lambda: joblist.addjob(job_dropdown.get()) )
+addjob_btn =ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, 
+                          fg_color='#333333', image=addjob_image, 
+                          command=lambda: joblist.addjob(job_dropdown.get()) )
 addjob_btn.place(x=355,y=140)
-deljob_btn =ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, fg_color='#333333', hover_color='#990000', image=deljob_image, command=lambda: joblist.deletejob(job_dropdown.get()) )
+
+
+deljob_btn =ctk.CTkButton(master=root, width=58, height=35, text=None, corner_radius=7, 
+                          fg_color='#333333', hover_color='#990000', image=deljob_image, 
+                          command=lambda: joblist.deletejob(job_dropdown.get()) )
 deljob_btn.place(x=421,y=140)
 
 ### ADD LOG
 addjob_image = ctk.CTkImage(Image.open(os.path.join('icons','add_b.png')), size=(20,20))
-
-addtime_btn =ctk.CTkButton(master=root, width=125, height=35, text=None, text_color='#000000', hover_color='#99CC99', corner_radius=7, font=("Roboto Bold", 15), image=addjob_image, command= lambda: timelog.log_time(job_dropdown.get(),time_input.get()))
+addtime_btn = ctk.CTkButton(master=root, width=125, height=35, text=None, 
+                            text_color='#000000', hover_color='#99CC99', 
+                            corner_radius=7, font=("Roboto Bold", 15), image=addjob_image, 
+                            command= lambda: timelog.log_time(job_dropdown.get(),time_input.get()))
 addtime_btn.place(x=355,y=185)
 
 if __name__ == "__main__":
