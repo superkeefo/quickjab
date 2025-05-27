@@ -4,6 +4,8 @@ import datetime
 import glob
 from PIL import Image
 
+os.makedirs('joblist', exist_ok=True)
+os.makedirs('logs', exist_ok=True)
 
 JOBLIST = os.path.join('joblist','joblist.txt')
 
@@ -29,14 +31,14 @@ class Jobtimer:
             self.setcountbtns()
             countup_btn.configure(state="normal")
             countdown_btn.configure(state="disabled")
-            print(f'now counting down')
+            
 
         else:
             self.count_mode = "up"
             self.setcountbtns()
             countup_btn.configure(state="disabled")
             countdown_btn.configure(state="normal")
-            print(f'now counting up')
+            
 
     def setcountbtns(self):
         if self.count_mode == "up":
@@ -48,7 +50,6 @@ class Jobtimer:
 
     def playpause(self):
         if not self.counting:
-            # Read values from inputs
             try:
                 hours = int(self.clock_hours_input.get())
             except Exception:
@@ -62,16 +63,19 @@ class Jobtimer:
             self.stopcount()
 
     def startcount(self, hours=0, minutes=0):
+        if self.count_mode == "down" and hours == 0 and minutes == 0:
+            time_input.delete(0, "end")
+            time_input.insert(0, "no time to countdown")
+            return
+        
         self.counting = True
         countup_btn.configure(state="disabled")
         countdown_btn.configure(state="disabled")
         self.count_btn.configure(fg_color="#990000", image=self.pause_image, hover_color="#AA0000")
         if self.count_mode == "up":
-            # Start from the given time in seconds
             self.starttime = hours * 3600 + minutes * 60
             self.countup(self.starttime)
         else:
-            # Set remaining time in seconds
             self.remaining = hours * 3600 + minutes * 60
             self.countdown(self.remaining)
         
@@ -106,10 +110,8 @@ class Jobtimer:
                 self.clock_minutes_input.delete(0, "end")
                 self.clock_minutes_input.insert(0, f"{minutes:02}")
                 self.clock_minutes_input.configure(state="disabled")
-            print(f"{hours:02}:{minutes:02}")
             self.remaining -= 1
             if self.counting:
-                # Store after id
                 self._timer_after_id = root.after(1000, self.countdown)
             else:
                 self._timer_after_id = None
@@ -136,21 +138,17 @@ class Jobtimer:
             self.clock_minutes_input.delete(0, "end")
             self.clock_minutes_input.insert(0, f"{minutes:02}")
             self.clock_minutes_input.configure(state="disabled")
-        print(f"{hours:02}:{minutes:02}")
         self.starttime += 1
         if self.counting:
-            # Store after id
             self._timer_after_id = root.after(1000, self.countup)
         else:
             self._timer_after_id = None
 
     def stopcount(self):
         self.counting = False
-        # Cancel any scheduled after callback
         if self._timer_after_id is not None:
             root.after_cancel(self._timer_after_id)
             self._timer_after_id = None
-        # Re-enable inputs when stopped
         if self.clock_hours_input:
             self.clock_hours_input.configure(state="normal")
         if self.clock_minutes_input:
@@ -178,7 +176,7 @@ class Jobtimer:
         self.count_btn.configure(fg_color=["#2CC985", "#2FA572"], image=self.play_image, hover_color="#99cc99")
         time_input.delete(0, "end")
         time_input.insert(0, stopped_at)
-        print("Time's up!")
+        
 
     def convertinput(self, hours, minutes):
         self.inputhours = hours*3600
@@ -200,7 +198,7 @@ class Joblist:
         
     def addjob(self, jobname):
         if jobname == "Select job" or not jobname.strip():
-            return  # Do nothing
+            return  
         if jobname not in self.jobs:
             self.jobs.append(jobname)
             with open(JOBLIST, "w") as file:
@@ -210,7 +208,7 @@ class Joblist:
 
     def deletejob(self, jobtodelete):
         if jobtodelete == "Select job" or not jobtodelete.strip():
-            return  # Do nothing
+            return  
         if jobtodelete in self.jobs:
             self.jobs.remove(jobtodelete)
             with open(JOBLIST, "w") as file:
