@@ -175,6 +175,7 @@ class Jobtimer:
         self.counting = False
         countup_btn.configure(state="normal")
         stopped_at = datetime.datetime.now().strftime("Stopped at %H:%M")
+        self.count_btn.configure(fg_color=["#2CC985", "#2FA572"], image=self.play_image, hover_color="#99cc99")
         time_input.delete(0, "end")
         time_input.insert(0, stopped_at)
         print("Time's up!")
