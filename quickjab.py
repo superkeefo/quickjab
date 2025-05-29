@@ -236,10 +236,13 @@ class Timelog:
             return new_log
     
     def log_time(self, jobname, input):
+        self.fulldate = datetime.date.today() # needs to be initialised at time of log
         if jobname != "Select job" and input.strip():
             output = (f'{self.cur_date}   {jobname}   {input}')
             with open(self.cur_log, "a") as file:
                 file.write(output + "\n")
+            time_input.delete(0, "end")
+            job_dropdown.set("Select job")
             
 
 root = ctk.CTk()
